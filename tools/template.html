@@ -1,0 +1,634 @@
+<title>Sunday Prop Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a yellow scoreboard band with the week's value summary, then a spotlight of the three best bets, then a ranked board of rows that expand into full detail. Yellow = best bets, charcoal = value, green = positive edge and hits, red = negative. */
+:root {
+  /* Yellow & white: one deliberate light look in every theme */
+  --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f2f2f5; --ink: #121212; --muted: #565b66; --line: #dadce2;
+  --band: #ffd400; --band-ink: #121212; --band-muted: #4d4100; --band-line: #e2bb00;
+  --best: #ffd400; --best-ink: #121212; --best-soft: #fff8cc; --best-line: #e2bb00; --under: #c2410c;
+  --value: #1f2329; --value-ink: #ffffff; --value-soft: #eef0f3;
+  --good: #0a8f3c; --good-soft: #e3f5ea; --bad: #6b7280; --bad-soft: #eef0f3; --market: #b9bec8; --focus: #1d4ed8;
+  --display: "Oswald", "Arial Narrow", sans-serif;
+  --body: "Plus Jakarta Sans", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.inner { max-width: 960px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h2 { font-size: 1.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--muted); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+button:focus-visible, input:focus-visible, select:focus-visible, .row-head:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* band */
+.band { background: var(--band); color: var(--band-ink); }
+.band .inner { padding-block: 22px 0; display: grid; gap: 14px; }
+.band .eyebrow { color: var(--band-muted); }
+h1 { font-size: 3rem; font-weight: 700; line-height: .95; text-transform: uppercase; letter-spacing: .01em; }
+.band .sub { color: var(--band-muted); max-width: 62ch; margin: 0; }
+.fresh { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .82rem; color: var(--band-muted); }
+.fresh b { color: var(--band-ink); }
+.live { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--good); margin-right: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 30%, transparent); }
+.live.stale { background: var(--value); }
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--band-line); border-radius: 10px; overflow: hidden; }
+.summary > div { padding: 12px 14px; display: grid; gap: 2px; border-right: 1px solid var(--band-line); }
+.summary > div:last-child { border-right: 0; }
+.summary span { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: var(--band-muted); font-weight: 700; }
+.summary b { font: 700 1.9rem/1 var(--display); }
+.summary b.gold { color: var(--band-ink); text-decoration: underline 3px var(--band-ink); text-underline-offset: 6px; }
+nav { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 4px; }
+nav button { font: 700 1.05rem var(--display); text-transform: uppercase; letter-spacing: .06em; background: transparent; color: var(--band-muted); border: 0; padding: 10px 16px; cursor: pointer; border-radius: 8px 8px 0 0; }
+nav button:hover { color: var(--band-ink); }
+nav button[aria-selected="true"] { background: var(--bg); color: var(--ink); }
+
+main .inner { padding-block: 22px 56px; display: grid; gap: 22px; }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.toolbar label { display: flex; gap: 6px; align-items: center; font-size: .85rem; color: var(--muted); font-weight: 600; }
+select, input { font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+.btn { font: 700 .85rem var(--body); border: 1.5px solid var(--ink); color: var(--ink); background: transparent; padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+.btn:hover { background: var(--surface-2); }
+.btn.gold { background: var(--value); border-color: var(--value); color: var(--value-ink); }
+.btn.gold:hover { filter: brightness(1.05); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* tags */
+.tag { display: inline-flex; align-items: center; font: 700 .78rem var(--display); text-transform: uppercase; letter-spacing: .08em; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
+.tag.best { background: var(--best); color: var(--best-ink); }
+.tag.value { background: var(--value); color: var(--value-ink); }
+.tag.lean { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+.tag.pass { background: var(--bad-soft); color: var(--bad); }
+.chip { display: inline-block; font-size: .76rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.chip.warn { background: var(--value-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--value); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); box-shadow: inset 0 0 0 1px var(--bad); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* spotlight */
+.spot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.spot-card { background: var(--surface); border: 2px solid var(--best-line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; box-shadow: 0 10px 28px -16px color-mix(in srgb, var(--best) 60%, transparent); }
+.spot-card.top { background: linear-gradient(180deg, var(--best-soft), var(--surface) 55%); }
+.spot-rank { display: flex; justify-content: space-between; align-items: center; }
+.spot-rank .r { font: 700 1rem var(--display); letter-spacing: .1em; color: var(--muted); }
+.spot-name { font: 700 1.7rem/1 var(--display); text-transform: uppercase; }
+.spot-prop { font: 600 1.15rem var(--display); text-transform: uppercase; color: var(--ink); }
+.spot-edge { display: flex; align-items: baseline; gap: 8px; }
+.spot-edge b { font: 700 2.8rem/1 var(--display); color: var(--good); }
+.spot-edge span { font-size: .8rem; color: var(--muted); font-weight: 600; }
+.spot-meta { font-size: .82rem; color: var(--muted); }
+.kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.kv div { display: grid; }
+.kv span { font-size: .66rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.kv b { font: 700 .98rem var(--mono); font-variant-numeric: tabular-nums; }
+.odds-pill { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 74px; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); box-shadow: inset 0 0 0 1.5px var(--line); }
+.odds-pill b { font: 700 1.05rem var(--mono); }
+.odds-pill span { font-size: .66rem; color: var(--muted); font-weight: 600; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* board rows */
+.board { display: grid; gap: 8px; }
+.row { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+.row.is-value { border-color: var(--value); }
+.row.is-best { border-color: var(--best-line); }
+.row-head { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto 28px; gap: 14px; align-items: center; padding: 10px 14px 10px 10px; cursor: pointer; width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; }
+.row-head:hover { background: var(--surface-2); }
+.edge-tile { display: grid; place-items: center; align-content: center; height: 62px; border-radius: 8px; background: var(--surface-2); color: var(--muted); }
+.edge-tile b { font: 700 1.6rem/1 var(--display); }
+.edge-tile span { font: 700 .62rem var(--body); letter-spacing: .12em; text-transform: uppercase; }
+.row.is-value .edge-tile { background: var(--value); color: var(--value-ink); }
+.row.is-best .edge-tile { background: var(--best); color: var(--best-ink); }
+.who { min-width: 0; display: grid; gap: 2px; }
+.who .nm { font: 700 1.3rem/1.05 var(--display); text-transform: uppercase; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.who .pr { font: 700 1rem var(--display); text-transform: uppercase; letter-spacing: .02em; }
+.who .pr .ov { color: var(--good); } .who .pr .un { color: var(--under); }
+.who .mt { font-size: .8rem; color: var(--muted); }
+.caret { font-size: 1.1rem; color: var(--muted); transition: transform .15s; text-align: center; }
+.row.open .caret { transform: rotate(180deg); }
+.row-body { border-top: 1.5px solid var(--line); padding: 14px 16px; display: grid; gap: 14px; background: var(--surface); }
+.row-body.in-spot { padding: 12px 0 0; }
+.row-body.in-spot .split { grid-template-columns: 1fr; }
+.row-body.in-spot .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.split { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
+.stat { display: grid; gap: 1px; }
+.stat span { font-size: .66rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.stat b { font: 700 1.05rem var(--mono); font-variant-numeric: tabular-nums; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.meter { display: grid; gap: 6px; }
+.meter-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 52px; gap: 8px; align-items: center; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.meter-track { height: 10px; background: var(--surface-2); border-radius: 5px; box-shadow: inset 0 0 0 1px var(--line); position: relative; overflow: hidden; }
+.meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; }
+.meter-fill.mkt { background: var(--market); } .meter-fill.us { background: var(--good); }
+.meter-row b { font: 700 .82rem var(--mono); color: var(--ink); text-align: right; }
+.edit { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .82rem; color: var(--muted); font-weight: 600; }
+.edit input { width: 84px; font-family: var(--mono); }
+svg text { fill: var(--muted); font: 600 10px var(--mono); }
+.ai { font-size: .9rem; white-space: pre-wrap; background: var(--surface-2); border-left: 4px solid var(--value); border-radius: 0 8px 8px 0; padding: 10px 12px; }
+.foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; font-size: .8rem; color: var(--muted); }
+.legend { display: flex; gap: 14px; font-size: .78rem; color: var(--muted); flex-wrap: wrap; font-weight: 600; }
+.sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* tables */
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: .88rem; }
+th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+thead th { font: 700 .7rem var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--band-muted); background: var(--band); position: sticky; top: 0; }
+th.sortable { cursor: pointer; } th.sortable:hover { color: var(--band-ink); }
+td.num, th.r { text-align: right; }
+td.num { font-family: var(--mono); font-size: .84rem; font-variant-numeric: tabular-nums; font-weight: 500; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.v-value td { background: var(--value-soft); }
+tr.v-best td { background: var(--best-soft); }
+td.edgecell { font-weight: 700; }
+.hot { font-weight: 700; color: var(--good); }
+.panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; align-content: start; }
+.calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; }
+.field { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); font-weight: 600; }
+.field input, .field select { width: 100%; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.empty { color: var(--muted); font-size: .9rem; margin: 0; }
+details { font-size: .88rem; color: var(--muted); background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+details summary { cursor: pointer; color: var(--ink); font-weight: 700; }
+details p { margin: 8px 0 0; max-width: 72ch; }
+.sec-head { display: flex; justify-content: space-between; align-items: end; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .spot { grid-template-columns: 1fr; }
+  .split, .calc { grid-template-columns: 1fr; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary > div:nth-child(2) { border-right: 0; }
+  .summary > div:nth-child(-n+2) { border-bottom: 1px solid var(--band-line); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .row-head { grid-template-columns: 70px minmax(0, 1fr) 20px; gap: 10px; }
+  .row-head .odds-pill { display: none; }
+  h1 { font-size: 2.3rem; }
+}
+@media (prefers-reduced-motion: reduce) { .caret { transition: none; } }
+</style>
+
+<div class="band">
+  <div class="inner">
+    <div class="eyebrow" id="eyebrow">NFL</div>
+    <h1>Sunday Prop Board</h1>
+    <p class="sub">Live player props ranked by edge: how much more often we think a prop hits than its price says. Yellow marks the best bets. Black marks value bets.</p>
+    <div class="fresh" id="fresh"></div>
+    <div class="summary" id="summary"></div>
+    <nav role="tablist">
+      <button role="tab" aria-selected="true" data-view="picks" id="tab-picks">Top picks</button>
+      <button role="tab" aria-selected="false" data-view="all" id="tab-all">All props</button>
+      <button role="tab" aria-selected="false" data-view="slate" id="tab-slate">Slate &amp; odds</button>
+      <button role="tab" aria-selected="false" data-view="calc" id="tab-calc">Calculator</button>
+    </nav>
+  </div>
+</div>
+
+<main>
+  <div class="inner">
+    <section id="view-picks" style="display:grid;gap:22px">
+      <div class="sec-head">
+        <h2>Best bets</h2>
+        <div class="toolbar">
+          <label for="f-game">Game <select id="f-game"><option value="">All games</option></select></label>
+          <label for="f-market">Market <select id="f-market"><option value="">All markets</option></select></label>
+        </div>
+      </div>
+      <div class="spot" id="spot"></div>
+      <div class="sec-head">
+        <h2>Value board</h2>
+        <div class="toolbar">
+          <span class="legend"><span><span class="sw" style="background:var(--best)"></span>Best bet · 5+ pts</span><span><span class="sw" style="background:var(--value)"></span>Value · 3+ pts</span><span><span class="sw" style="background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line)"></span>Lean · 2+ pts</span></span>
+          <button class="btn" id="reset-lines" type="button">Reset edited lines</button>
+        </div>
+      </div>
+      <div class="board" id="board"></div>
+      <details>
+        <summary>How picks are made</summary>
+        <p>Each prop starts from the fair market chance: every book's over and under prices with the vig removed. We move it 25% toward what the player's 2026 game log says, using a recency-weighted bell curve plus his hit rate against this exact line. Edge is our chance minus the chance implied by the best available price.</p>
+        <p>Picks need at least 4 games, odds between −200 and +200, and 2+ points of edge. We leave a prop out when the player is listed Out or Doubtful, when the line sits far from his average, or when the books price him far from his history. Those gaps usually mean news the log can't see, like a role change or a teammate returning. Each player gets at most 2 picks and each market at most 5.</p>
+      </details>
+    </section>
+
+    <section id="view-all" hidden style="display:grid;gap:14px">
+      <div class="toolbar">
+        <label for="a-q">Player <input id="a-q" type="search" placeholder="Search a name"></label>
+        <label for="a-game">Game <select id="a-game"><option value="">All games</option></select></label>
+        <label for="a-market">Market <select id="a-market"><option value="">All markets</option></select></label>
+        <label for="a-value"><input id="a-value" type="checkbox"> Value only</label>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>Player</th><th>Prop</th><th class="r">Line</th><th class="r">Best odds</th><th>Book</th>
+            <th class="r sortable" data-sort="est">Our chance</th><th class="r sortable" data-sort="edge">Edge ▾</th><th class="r sortable" data-sort="hit">Hit rate</th><th class="r sortable" data-sort="avg">Avg</th>
+          </tr></thead>
+          <tbody id="all"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="all-count"></p>
+    </section>
+
+    <section id="view-slate" hidden style="display:grid;gap:12px">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Game</th><th>Kickoff</th><th class="r">Spread</th><th class="r">Total</th><th class="r">Moneyline</th><th class="r">Away implied</th><th class="r">Home implied</th><th class="r">Value picks</th></tr></thead>
+          <tbody id="slate"></tbody>
+        </table>
+      </div>
+      <p class="empty" style="font-size:.85rem">Spread and total are the median across books; moneyline is the best price for each side. Implied team total = (total ÷ 2) ± (spread ÷ 2). Green totals are 24+ points, the offenses most likely to pile up yards.</p>
+    </section>
+
+    <section id="view-calc" hidden>
+      <div class="calc">
+        <form class="panel" id="calc-form">
+          <h2>Check any prop</h2>
+          <label class="field" for="c-pick">Load a player from this week
+            <select id="c-pick"><option value="">Choose a prop…</option></select></label>
+          <label class="field" for="c-name">Player and market<input id="c-name" type="text" value="Example: WR receiving yards"></label>
+          <div class="row2">
+            <label class="field" for="c-line">Line<input id="c-line" type="number" step="0.5" value="64.5"></label>
+            <label class="field" for="c-side">Side<select id="c-side"><option value="over">Over</option><option value="under">Under</option></select></label>
+          </div>
+          <div class="row2">
+            <label class="field" for="c-odds">Odds (American)<input id="c-odds" type="number" step="1" value="-115"></label>
+            <label class="field" for="c-bank">Bankroll ($)<input id="c-bank" type="number" step="10" value="500"></label>
+          </div>
+          <label class="field" for="c-log">Recent games, oldest first (comma separated)<input id="c-log" type="text" value="48, 91, 72, 55, 103, 66, 39, 84"></label>
+          <p class="empty">The sample numbers are examples. Load a player above or paste any game log.</p>
+        </form>
+        <div class="panel" id="calc-out"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+// ---------- math ----------
+const implied = o => o < 0 ? -o / (-o + 100) : 100 / (o + 100);
+const payout = o => o < 0 ? 100 / -o : o / 100;
+function erf(x) { const s = Math.sign(x); x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
+  return s * (1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)); }
+const phi = z => 0.5 * (1 + erf(z / Math.SQRT2));
+const LOG_WEIGHT = 0.25;   // our chance = 75% fair market + 25% game-log model
+const isCount = m => m === "Receptions";
+
+// Game-log model: half recency-weighted bell curve, half regressed hit rate.
+function logModel(vals, line, side, count) {
+  const n = vals.length; if (n < 3) return null;
+  const w = vals.map((_, i) => Math.pow(0.85, n - 1 - i)), sw = w.reduce((a, b) => a + b, 0);
+  const wmean = vals.reduce((a, v, i) => a + v * w[i], 0) / sw;
+  const mean = vals.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.max(Math.sqrt(vals.reduce((a, v) => a + (v - mean) ** 2, 0) / (n - 1)), count ? 1 : 8);
+  const pOver = 1 - phi((line - wmean) / sd);
+  const hit = v => side === "over" ? v > line : v < line;
+  const hits = vals.filter(hit).length, last5 = vals.slice(-5);
+  return { p: 0.5 * (side === "over" ? pOver : 1 - pOver) + 0.5 * (hits + 3) / (n + 6), n, hits, mean, wmean, sd,
+    hits5: last5.filter(hit).length, n5: last5.length, last3: vals.slice(-3).reduce((a, b) => a + b, 0) / Math.min(3, n) };
+}
+const pct = x => (x * 100).toFixed(1) + "%";
+const fmtOdds = o => (o > 0 ? "+" : "") + o;
+const money = x => (x >= 0 ? "+$" : "−$") + Math.abs(x).toFixed(2);
+const pts = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(1);
+// tier: [css class, label]
+function tier(edge) {
+  if (edge == null) return ["lean", "No data"];
+  if (edge >= 0.05) return ["best", "Best bet"];
+  if (edge >= 0.03) return ["value", "Value"];
+  if (edge >= 0) return ["lean", "Lean"];
+  return ["pass", "Pass"];
+}
+const BAD_INJ = /out|doubtful|injured reserve|ir\b|suspend/i;
+
+// ---------- storage (per viewer) ----------
+const KEY = "propboard-" + (DATA ? DATA.season + "-w" + DATA.week : "none");
+let saved = {}; try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { saved = {}; }
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+
+// ---------- derive ----------
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const games = DATA ? DATA.games : [];
+const gameById = Object.fromEntries(games.map(g => [g.id, g]));
+const props = (DATA ? DATA.props : []).map((p, i) => ({ ...p, key: `${p.player}|${p.market}|${p.side}`.replace(/\W+/g, "_"), idx: i }));
+
+function evaluate(p) {
+  const s = saved[p.key] || {};
+  const line = s.line ?? p.line, odds = s.odds ?? p.odds;
+  const vals = p.log.map(r => r.v);
+  // the market's fair chance is only known at the consensus line; for an edited line, start from 50/50
+  const fair = line === p.line ? p.fair : 0.5;
+  const m = logModel(vals, line, p.side, isCount(p.market));
+  const imp = implied(odds);
+  const est = m ? Math.min(Math.max(fair + LOG_WEIGHT * (m.p - fair), 0.02), 0.98) : null;
+  const edge = est == null ? null : est - imp;
+  const ev = est == null ? null : 100 * (est * payout(odds) - (1 - est));
+  let role = false;
+  if (m) { const gap = Math.abs(line - m.mean); role = gap / Math.max(m.mean, line, 1) > 0.45 && gap > (isCount(p.market) ? 1.5 : 15); }
+  const injured = p.injury && BAD_INJ.test(p.injury.status);
+  const disagree = !!m && line === p.line && Math.abs(m.p - fair) > 0.3;   // books likely know something his log doesn't
+  return { line, odds, fair, imp, est, edge, ev, m, role, injured, disagree, edited: s.line != null || s.odds != null };
+}
+function eligible(p, c) {
+  return c.edge != null && c.edge >= 0.02 && c.m.n >= 4 && c.odds >= -200 && c.odds <= 200 && !c.role && !c.injured && !c.disagree;
+}
+function topPicks(gameF, marketF, limit) {
+  const rows = props.filter(p => (!gameF || p.game === gameF) && (!marketF || p.market === marketF))
+    .map(p => ({ p, c: evaluate(p) })).filter(r => eligible(r.p, r.c) || (r.c.edited && r.c.edge != null))
+    .sort((a, b) => b.c.edge - a.c.edge);
+  const perPlayer = {}, perMarket = {}, out = [];
+  for (const r of rows) {
+    if ((perPlayer[r.p.player] || 0) >= 2 || (!marketF && (perMarket[r.p.market] || 0) >= 5)) continue;
+    perPlayer[r.p.player] = (perPlayer[r.p.player] || 0) + 1; perMarket[r.p.market] = (perMarket[r.p.market] || 0) + 1;
+    out.push(r); if (out.length >= limit) break;
+  }
+  return out;
+}
+
+// ---------- header ----------
+function renderHeader() {
+  const eb = document.getElementById("eyebrow"), fr = document.getElementById("fresh"), sm = document.getElementById("summary");
+  fr.replaceChildren(); sm.replaceChildren();
+  if (!DATA) { fr.append(el("span", null, "No data loaded yet.")); return; }
+  const kicks = games.map(g => g.kickUtc).sort();
+  const d = s => new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+  eb.textContent = `NFL · ${DATA.season} Week ${DATA.week} · ${d(kicks[0])}${d(kicks[0]) !== d(kicks.at(-1)) ? "–" + d(kicks.at(-1)) : ""}`;
+  const ageH = (Date.now() - new Date(DATA.generated).getTime()) / 36e5;
+  const s1 = el("span"); const dot = el("span", "live" + (ageH > 36 ? " stale" : "")); dot.setAttribute("aria-hidden", "true");
+  s1.append(dot, "Odds updated ", el("b", null, DATA.generatedEt));
+  fr.append(s1, el("span", null, `${games.length} games · ${Math.max(...games.map(g => g.books || 0))} sportsbooks`));
+  if (ageH > 36) fr.append(el("span", null, "Lines have likely moved since this update. Check your book."));
+  const picks = topPicks("", "", 15);
+  const nValue = picks.filter(r => r.c.edge >= 0.03).length, best = picks[0];
+  const avgEv = picks.length ? picks.reduce((a, r) => a + r.c.ev, 0) / picks.length : 0;
+  const cell = (label, val, gold) => { const c = el("div"); c.append(el("span", null, label), el("b", gold ? "gold" : "", val)); return c; };
+  sm.append(cell("Value bets", String(nValue), true), cell("Best edge", best ? pts(best.c.edge) + " pts" : "—", true),
+    cell("Avg EV / $100", picks.length ? money(avgEv) : "—"), cell("Props scanned", String(props.length)));
+}
+
+// ---------- shared bits ----------
+const fGame = document.getElementById("f-game"), fMarket = document.getElementById("f-market");
+const aGame = document.getElementById("a-game"), aMarket = document.getElementById("a-market"), aQ = document.getElementById("a-q"), aValue = document.getElementById("a-value");
+for (const g of games) { fGame.add(new Option(`${g.away} @ ${g.home}`, g.id)); aGame.add(new Option(`${g.away} @ ${g.home}`, g.id)); }
+for (const m of (DATA ? DATA.markets : [])) { fMarket.add(new Option(m, m)); aMarket.add(new Option(m, m)); }
+let sample = null;
+const aiOut = {}, openRows = new Set();
+
+function gameLine(g) {
+  if (!g) return "";
+  return [g.kick, g.fav ? `${g.fav} −${g.spread}` : "", g.total ? `O/U ${g.total}` : ""].filter(Boolean).join(" · ");
+}
+const oppOf = (p, g) => p.team ? (g.away === p.team ? "@ " + g.home : "vs " + g.away) : `${g.away} @ ${g.home}`;
+function propLine(p, c) {
+  const d = el("div", "pr"); d.append(el("span", p.side === "over" ? "ov" : "un", p.side === "over" ? "Over " : "Under "), `${c.line} ${p.market}`); return d;
+}
+function oddsPill(p, c) { const o = el("div", "odds-pill"); o.append(el("b", null, fmtOdds(c.odds)), el("span", null, p.book)); return o; }
+
+function miniLog(p, c) {
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  const log = p.log, n = log.length, W = 300, H = 96, padB = 16, padT = 8;
+  if (!n) return el("p", "empty", "No 2026 game log.");
+  const max = Math.max(...log.map(r => r.v), c.line) * 1.15 || 1, bw = W / Math.max(n, 5);
+  const y = v => padT + (H - padT - padB) * (1 - v / max);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", "100%"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `Last ${n} games: ${log.map(r => r.v).join(", ")} against a line of ${c.line}`);
+  const mk = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); return e; };
+  log.forEach((r, i) => {
+    const hit = p.side === "over" ? r.v > c.line : r.v < c.line;
+    const bar = mk("rect", { x: i * bw + bw * .14, y: y(r.v), width: bw * .72, height: Math.max(y(0) - y(r.v), 1.5), rx: 2, fill: hit ? "var(--good)" : "var(--bad)", opacity: hit ? 1 : .75 });
+    const tip = document.createElementNS(ns, "title"); tip.textContent = `Wk ${r.wk} ${r.opp}: ${r.v}`; bar.append(tip);
+    mk("text", { x: i * bw + bw / 2, y: H - 4, "text-anchor": "middle" }).textContent = r.opp.replace("vs ", "");
+  });
+  mk("line", { x1: 0, x2: W, y1: y(c.line), y2: y(c.line), stroke: "var(--value)", "stroke-width": 2.5, "stroke-dasharray": "6 4" });
+  return svg;
+}
+
+function meter(label, v, cls) {
+  const r = el("div", "meter-row"), t = el("div", "meter-track"), f = el("div", "meter-fill " + cls);
+  f.style.width = pct(v); t.append(f); r.append(el("span", null, label), t, el("b", null, pct(v))); return r;
+}
+
+function detail(p, c, prefix = "") {
+  const body = el("div", "row-body"), g = gameById[p.game];
+  const stats = el("div", "stats");
+  const st = (label, val, cls) => { const s = el("div", "stat"); s.append(el("span", null, label), el("b", cls || "", val)); return s; };
+  stats.append(
+    st("Edge", c.edge == null ? "—" : pts(c.edge) + " pts", c.edge == null ? "" : c.edge > 0 ? "pos" : "neg"),
+    st("EV / $100", c.ev == null ? "—" : money(c.ev), c.ev == null ? "" : c.ev > 0 ? "pos" : "neg"),
+    st("Hit rate", c.m ? `${c.m.hits}/${c.m.n}` : "—"), st("Last 5", c.m ? `${c.m.hits5}/${c.m.n5}` : "—"),
+    st("Season avg", c.m ? c.m.mean.toFixed(1) : "—"), st("Last 3 avg", c.m ? c.m.last3.toFixed(1) : "—"),
+    st("Fair market", pct(c.fair)), st("Books", String(p.books)));
+  const meters = el("div", "meter");
+  meters.append(meter("Price implies", c.imp, "mkt")); if (c.est != null) meters.append(meter("Our chance", c.est, "us"));
+  const left = el("div"); left.style.display = "grid"; left.style.gap = "14px"; left.append(stats, meters);
+  const right = el("div"); right.append(el("div", "eyebrow", "Game log vs line"), miniLog(p, c));
+  const split = el("div", "split"); split.append(left, right);
+
+  const chips = el("div", "chips");
+  if (g.homeImp) chips.append(el("span", "chip", `${p.team} implied ${p.team === g.home ? g.homeImp : g.awayImp} pts`));
+  if (p.injury) chips.append(el("span", "chip " + (c.injured ? "bad" : "warn"), `${p.injury.status}${p.injury.comment ? ": " + p.injury.comment : ""}`));
+  if (c.role) chips.append(el("span", "chip warn", "Line far from his average. Check for a role or injury change."));
+  if (c.disagree) chips.append(el("span", "chip warn", "Books price this far from his history. Check the news."));
+  if (c.edited) chips.append(el("span", "chip warn", "You edited this line"));
+
+  const edit = el("div", "edit");
+  const li = el("input"); li.type = "number"; li.step = "0.5"; li.value = c.line; li.id = prefix + "line-" + p.key; li.setAttribute("aria-label", "Line");
+  const oi = el("input"); oi.type = "number"; oi.step = "1"; oi.value = c.odds; oi.id = prefix + "odds-" + p.key; oi.setAttribute("aria-label", "Odds");
+  const onEdit = ev => {
+    const l = parseFloat(li.value), o = parseInt(oi.value, 10);
+    if (!isFinite(l) || !isFinite(o) || (o > -100 && o < 100)) return;
+    saved[p.key] = { line: l, odds: o }; persist(); const focusId = ev.target.id; renderPicks(); renderHeader(); document.getElementById(focusId)?.focus();
+  };
+  li.addEventListener("change", onEdit); oi.addEventListener("change", onEdit);
+  edit.append("Your book's line", li, "Odds", oi);
+
+  const ai = el("div", "ai"); ai.hidden = !aiOut[p.key]; ai.textContent = aiOut[p.key] || "";
+  const foot = el("div", "foot"); foot.append(edit);
+  if (sample) { const b = el("button", "btn gold", aiOut[p.key] ? "Ask again" : "Ask Claude for a breakdown"); b.type = "button"; b.addEventListener("click", () => askClaude(p, ai, b)); foot.append(b); }
+  body.append(split, chips, ai, foot);
+  return body;
+}
+
+// ---------- picks ----------
+function renderPicks() {
+  const spot = document.getElementById("spot"), board = document.getElementById("board");
+  spot.replaceChildren(); board.replaceChildren();
+  if (!DATA) { spot.append(el("p", "empty", "Picks appear here after the first odds refresh.")); return; }
+  const picks = topPicks(fGame.value, fMarket.value, 15);
+  if (!picks.length) { spot.append(el("p", "empty", "No props clear the bar for these filters. Try All props.")); return; }
+
+  picks.slice(0, 3).forEach(({ p, c }, i) => {
+    const g = gameById[p.game], [tc, tl] = tier(c.edge);
+    const card = el("article", "spot-card" + (i === 0 ? " top" : ""));
+    const rk = el("div", "spot-rank"); rk.append(el("span", "r", i === 0 ? "★ Top play" : "#" + (i + 1)), el("span", "tag " + tc, tl));
+    const edge = el("div", "spot-edge"); edge.append(el("b", null, pts(c.edge)), el("span", null, "pts of edge"));
+    const kv = el("div", "kv");
+    const k = (l, v) => { const d = el("div"); d.append(el("span", null, l), el("b", null, v)); return d; };
+    kv.append(k("Odds", fmtOdds(c.odds)), k("Our chance", pct(c.est)), k("Hit rate", `${c.m.hits}/${c.m.n}`));
+    // details open inside the card: scrolling to the board row is blocked when the page is framed (phone app)
+    const sk = "spot-" + p.key, isOpen = openRows.has(sk);
+    const btn = el("button", "btn", isOpen ? "Hide details" : "See details"); btn.type = "button"; btn.id = "btn-" + sk;
+    btn.setAttribute("aria-expanded", String(isOpen));
+    btn.addEventListener("click", () => { isOpen ? openRows.delete(sk) : openRows.add(sk); renderPicks(); document.getElementById("btn-" + sk)?.focus(); });
+    const nm = el("div", "spot-name", p.player), pr = propLine(p, c); pr.className = "spot-prop";
+    card.append(rk, nm, pr, el("div", "spot-meta", `${p.team} ${p.pos} ${oppOf(p, g)} · ${gameLine(g)} · best at ${p.book}`), edge, kv, btn);
+    if (isOpen) { const d = detail(p, c, "spot-"); d.classList.add("in-spot"); card.append(d); }
+    spot.append(card);
+  });
+
+  picks.forEach(({ p, c }, i) => {
+    const g = gameById[p.game], [tc, tl] = tier(c.edge);
+    const row = el("article", "row" + (tc === "best" ? " is-best" : tc === "value" ? " is-value" : "") + (openRows.has(p.key) ? " open" : ""));
+    row.id = "row-" + p.key;
+    const head = el("button", "row-head"); head.type = "button"; head.setAttribute("aria-expanded", String(openRows.has(p.key)));
+    const tile = el("div", "edge-tile"); tile.append(el("b", null, pts(c.edge)), el("span", null, tl));
+    const who = el("div", "who"); const nm = el("div", "nm"); nm.append(`${i + 1}. ${p.player}`);
+    if (p.injury) nm.append(el("span", "chip " + (c.injured ? "bad" : "warn"), p.injury.status));
+    if (c.edited) nm.append(el("span", "chip warn", "Edited"));
+    who.append(nm, propLine(p, c), el("div", "mt", `${p.team} ${p.pos} ${oppOf(p, g)} · ${gameLine(g)} · hit ${c.m.hits}/${c.m.n} · EV ${money(c.ev)}`));
+    head.append(tile, who, oddsPill(p, c), el("span", "caret", "▾"));
+    head.addEventListener("click", () => { openRows.has(p.key) ? openRows.delete(p.key) : openRows.add(p.key); renderPicks(); document.getElementById("row-" + p.key)?.querySelector(".row-head")?.focus(); });
+    row.append(head);
+    if (openRows.has(p.key)) row.append(detail(p, c));
+    board.append(row);
+  });
+}
+
+async function askClaude(p, box, btn) {
+  const c = evaluate(p), g = gameById[p.game];
+  const log = p.log.map(r => `Wk${r.wk} ${r.opp}: ${r.v}`).join("; ");
+  const prompt = `You are a careful NFL betting analyst. Give a short breakdown (under 150 words, plain text, no headings) of this player prop. Use ONLY the facts below; do not invent stats, injuries or news. Mention what the bettor should verify (injury reports, role changes, weather). End with one line: "Verdict: Bet / Lean / Pass" and the main reason.
+
+Prop: ${p.player} (${p.team} ${p.pos}) ${p.side.toUpperCase()} ${c.line} ${p.market} at ${fmtOdds(c.odds)} (${p.book})
+Game: ${g.away} @ ${g.home}, ${gameLine(g)}. Implied team totals: ${g.away} ${g.awayImp}, ${g.home} ${g.homeImp}.
+Fair market chance (vig removed, ${p.books} books): ${pct(c.fair)}. Price implies ${pct(c.imp)}.
+Our blended chance: ${c.est == null ? "n/a" : pct(c.est)}. Edge: ${c.edge == null ? "n/a" : pts(c.edge) + " pts"}.
+2026 game log (oldest first): ${log || "none"}
+Injury status: ${p.injury ? p.injury.status + " — " + p.injury.comment : "none listed"}
+${c.role ? "Warning: the line is far from his season average." : ""}`;
+  box.hidden = false; box.textContent = "Thinking…"; btn.disabled = true;
+  try {
+    const r = await sample(prompt, { onText: ({ text }) => { box.textContent = text; } });
+    aiOut[p.key] = r.text; box.textContent = r.text;
+  } catch (e) {
+    if (e && e.code === "not_granted") { sample = null; box.textContent = "Claude breakdowns are turned off for this page."; }
+    else if (e && e.code === "rate_limited") box.textContent = "Too many requests at once. Wait a minute and try again.";
+    else box.textContent = (e && e.text) || "Couldn't get a breakdown. Try again in a moment.";
+  } finally { btn.disabled = false; }
+}
+
+// ---------- all props ----------
+let sortKey = "edge";
+function renderAll() {
+  const tb = document.getElementById("all"); tb.replaceChildren();
+  const q = aQ.value.trim().toLowerCase();
+  let rows = props.filter(p => (!aGame.value || p.game === aGame.value) && (!aMarket.value || p.market === aMarket.value) && (!q || p.player.toLowerCase().includes(q)))
+    .map(p => ({ p, c: evaluate(p) }));
+  if (aValue.checked) rows = rows.filter(r => eligible(r.p, r.c) && r.c.edge >= 0.03);
+  const key = r => sortKey === "est" ? r.c.est : sortKey === "hit" ? (r.c.m ? r.c.m.hits / r.c.m.n : null) : sortKey === "avg" ? r.c.m?.mean : r.c.edge;
+  rows.sort((a, b) => (key(b) ?? -9) - (key(a) ?? -9));
+  const shown = rows.slice(0, 250);
+  for (const { p, c } of shown) {
+    const ok = eligible(p, c), [tc] = tier(c.edge);
+    const tr = el("tr", ok && tc === "best" ? "v-best" : ok && tc === "value" ? "v-value" : "");
+    const who = el("td"); who.append(el("b", null, p.player), el("span", "empty", ` ${p.team} ${p.pos} `));
+    if (ok && (tc === "best" || tc === "value")) who.append(el("span", "tag " + tc, tc === "best" ? "Best bet" : "Value"));
+    if (p.injury) who.append(" ", el("span", "chip " + (c.injured ? "bad" : "warn"), p.injury.status));
+    if (c.role || c.disagree) who.append(" ", el("span", "chip warn", c.role ? "Role change?" : "Market disagrees"));
+    tr.append(who, el("td", null, `${p.side === "over" ? "Over" : "Under"} ${p.market}`), el("td", "num", c.line), el("td", "num", fmtOdds(c.odds)), el("td", null, p.book),
+      el("td", "num", c.est == null ? "—" : pct(c.est)), el("td", "num edgecell " + (c.edge > 0 ? "pos" : "neg"), c.edge == null ? "—" : pts(c.edge)),
+      el("td", "num", c.m ? `${c.m.hits}/${c.m.n}` : "—"), el("td", "num", c.m ? c.m.mean.toFixed(1) : "—"));
+    tb.append(tr);
+  }
+  document.getElementById("all-count").textContent = `Showing ${shown.length} of ${rows.length} prop sides.` + (rows.length > 250 ? " Search or filter to narrow it down." : "");
+}
+document.querySelectorAll("th.sortable").forEach(th => th.addEventListener("click", () => {
+  sortKey = th.dataset.sort;
+  document.querySelectorAll("th.sortable").forEach(h => h.textContent = h.textContent.replace(" ▾", ""));
+  th.textContent += " ▾"; renderAll();
+}));
+[aQ, aGame, aMarket, aValue].forEach(x => x.addEventListener("input", renderAll));
+
+// ---------- slate ----------
+function renderSlate() {
+  const tb = document.getElementById("slate"); tb.replaceChildren();
+  const valueByGame = {};
+  for (const r of topPicks("", "", 999)) if (r.c.edge >= 0.03) valueByGame[r.p.game] = (valueByGame[r.p.game] || 0) + 1;
+  for (const g of games) {
+    const tr = el("tr");
+    const imp = v => el("td", "num" + (v >= 24 ? " hot" : ""), v ?? "—");
+    const vp = valueByGame[g.id] || 0, vcell = el("td", "num"); vcell.append(vp ? el("span", "tag value", String(vp)) : "—");
+    tr.append(el("td", null, `${g.away} @ ${g.home}`), el("td", null, g.kick), el("td", "num", g.fav ? `${g.fav} −${g.spread}` : "—"),
+      el("td", "num", g.total ?? "—"), el("td", "num", g.mlAway != null ? `${fmtOdds(g.mlAway)} / ${fmtOdds(g.mlHome)}` : "—"),
+      imp(g.awayImp), imp(g.homeImp), vcell);
+    tb.append(tr);
+  }
+}
+
+// ---------- calculator ----------
+const ids = ["c-name", "c-line", "c-side", "c-odds", "c-bank", "c-log"];
+try { const c = JSON.parse(localStorage.getItem("propboard-calc") || "null"); if (c) ids.forEach(i => { if (c[i] != null) document.getElementById(i).value = c[i]; }); } catch (e) {}
+const cPick = document.getElementById("c-pick");
+[...props].sort((a, b) => a.player.localeCompare(b.player)).forEach(p => cPick.add(new Option(`${p.player} · ${p.side} ${p.line} ${p.market} (${fmtOdds(p.odds)})`, p.idx)));
+cPick.addEventListener("change", () => {
+  const p = props[+cPick.value]; if (!p) return;
+  document.getElementById("c-name").value = `${p.player} ${p.market}`; document.getElementById("c-line").value = p.line;
+  document.getElementById("c-side").value = p.side; document.getElementById("c-odds").value = p.odds;
+  document.getElementById("c-log").value = p.log.map(r => r.v).join(", "); renderCalc();
+});
+function renderCalc() {
+  const v = Object.fromEntries(ids.map(i => [i, document.getElementById(i).value]));
+  try { localStorage.setItem("propboard-calc", JSON.stringify(v)); } catch (e) {}
+  const out = document.getElementById("calc-out"); out.replaceChildren();
+  const line = parseFloat(v["c-line"]), odds = parseInt(v["c-odds"], 10), side = v["c-side"], bank = parseFloat(v["c-bank"]) || 0;
+  const log = v["c-log"].split(/[,\s]+/).map(Number).filter(n => isFinite(n) && n >= 0);
+  out.append(el("h2", null, v["c-name"] || "Your prop"));
+  if (!isFinite(line) || !isFinite(odds) || (odds > -100 && odds < 100) || log.length < 3) {
+    out.append(el("p", "empty", "Enter a line, American odds (like −115 or +120), and at least 3 recent games.")); return; }
+  const m = logModel(log, line, side, /recept|catch|td/i.test(v["c-name"]));
+  const imp = implied(odds), est = Math.min(Math.max(0.5 + 0.5 * (m.p - 0.5), 0.02), 0.98), edge = est - imp, b = payout(odds);
+  const ev = 100 * (est * b - (1 - est)), kelly = Math.max(0, (b * est - (1 - est)) / b) / 4;
+  const sorted = [...log].sort((a, c) => a - c), n = log.length, med = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  const [tc, tl] = tier(edge);
+  const head = el("div", "sec-head"); head.append(el("div", "who"), el("span", "tag " + tc, tl));
+  head.firstChild.append(propLine({ side, market: "" }, { line }), el("div", "mt", `at ${fmtOdds(odds)}`)); out.append(head);
+  const stats = el("div", "stats");
+  const st = (l, val, cls) => { const s = el("div", "stat"); s.append(el("span", null, l), el("b", cls || "", val)); return s; };
+  stats.append(st("Average", m.mean.toFixed(1)), st("Median", med.toFixed(1)), st("Hit rate", `${m.hits}/${m.n}`), st("Last 5", `${m.hits5}/${m.n5}`),
+    st("Price implies", pct(imp)), st("Our chance", pct(est)), st("Edge", pts(edge) + " pts", edge > 0 ? "pos" : "neg"), st("EV / $100", money(ev), ev > 0 ? "pos" : "neg"));
+  out.append(stats);
+  const W = 460, H = 150, padL = 34, padB = 20, padT = 10, max = Math.max(...log, line) * 1.15;
+  const y = val => padT + (H - padT - padB) * (1 - val / max), bw = (W - padL - 8) / n;
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", "100%"); svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `Game log of ${n} games against the line of ${line}`);
+  const mk = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); return e; };
+  [0, max / 2].forEach(t => { mk("line", { x1: padL, x2: W - 4, y1: y(t), y2: y(t), stroke: "var(--line)", "stroke-width": 1 }); mk("text", { x: padL - 6, y: y(t) + 4, "text-anchor": "end" }).textContent = Math.round(t); });
+  log.forEach((val, i) => { const hit = side === "over" ? val > line : val < line;
+    mk("rect", { x: padL + i * bw + bw * .15, y: y(val), width: bw * .7, height: Math.max(y(0) - y(val), 1.5), rx: 2, fill: hit ? "var(--good)" : "var(--bad)", opacity: hit ? 1 : .75 });
+    mk("text", { x: padL + i * bw + bw / 2, y: H - 5, "text-anchor": "middle" }).textContent = "G" + (i + 1); });
+  mk("line", { x1: padL, x2: W - 4, y1: y(line), y2: y(line), stroke: "var(--value)", "stroke-width": 2.5, "stroke-dasharray": "6 4" });
+  mk("text", { x: W - 6, y: y(line) - 5, "text-anchor": "end" }).textContent = "Line " + line;
+  out.append(svg);
+  const lg = el("div", "legend"); lg.innerHTML = '<span><span class="sw" style="background:var(--good)"></span>Hit</span><span><span class="sw" style="background:var(--bad)"></span>Miss</span><span><span class="sw" style="background:var(--value)"></span>Line</span>'; out.append(lg);
+  out.append(el("p", "empty", edge > 0
+    ? `Suggested stake (quarter Kelly): $${(bank * kelly).toFixed(2)} of $${bank.toFixed(0)}. With no market price to lean on, our chance pulls the game-log model halfway back to 50%.`
+    : `No edge at this price. It needs to hit ${pct(imp)} of the time to break even; the log suggests ${pct(est)}.`));
+}
+ids.forEach(i => document.getElementById(i).addEventListener("input", renderCalc));
+document.getElementById("calc-form").addEventListener("submit", e => e.preventDefault());
+
+// ---------- tabs ----------
+const tabs = [...document.querySelectorAll("nav button")], views = ["picks", "all", "slate", "calc"];
+function show(view) {
+  tabs.forEach(t => t.setAttribute("aria-selected", String(t.dataset.view === view)));
+  views.forEach(v => { document.getElementById("view-" + v).hidden = v !== view; });
+}
+tabs.forEach(t => t.addEventListener("click", () => show(t.dataset.view)));
+const h = location.hash.slice(1); if (views.includes(h)) show(h);
+
+fGame.addEventListener("change", renderPicks); fMarket.addEventListener("change", renderPicks);
+document.getElementById("reset-lines").addEventListener("click", () => { saved = {}; persist(); renderPicks(); renderAll(); renderHeader(); });
+renderHeader(); renderPicks(); renderAll(); renderSlate(); renderCalc();
+window.claude?.use?.("sample").then(s => { if (s) { sample = s; renderPicks(); } }).catch(() => {});
+</script>
