@@ -153,7 +153,39 @@ details { font-size: .88rem; color: var(--muted); background: var(--surface); bo
 details summary { cursor: pointer; color: var(--ink); font-weight: 700; }
 details p { margin: 8px 0 0; max-width: 72ch; }
 .sec-head { display: flex; justify-content: space-between; align-items: end; gap: 10px; flex-wrap: wrap; }
+
+/* slate */
+.explain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.explain > div { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.explain b { font: 700 1.05rem var(--display); text-transform: uppercase; letter-spacing: .03em; }
+.explain p { margin: 4px 0 0; font-size: .86rem; color: var(--muted); }
+.mono { font-family: var(--mono); color: var(--ink); }
+.gbets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.gbet { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 6px; align-content: start; }
+.gbet.t-best { border: 2px solid var(--best-line); background: linear-gradient(180deg, var(--best-soft), var(--surface) 70%); }
+.gbet.t-value { border: 2px solid var(--value); }
+.gbet.t-none { opacity: .8; }
+.gbet-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.gbet-pick { font: 700 1.3rem/1.1 var(--display); text-transform: uppercase; }
+.gbet .mt, .game .mt { font-size: .8rem; color: var(--muted); }
+.games { display: grid; gap: 14px; }
+.game { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; }
+.game h3 { font: 700 1.6rem/1.05 var(--display); text-transform: uppercase; }
+.winbar { display: grid; gap: 4px; }
+.winbar-lab { display: flex; justify-content: space-between; gap: 8px; font: 700 .9rem var(--body); }
+.winbar-lab .empty { font-size: .72rem; font-weight: 600; align-self: center; text-align: center; }
+.winbar-track { display: flex; height: 12px; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.winbar-track .wa { background: var(--value); } .winbar-track .wh { background: var(--best); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fact { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; align-content: start; }
+.fact b { font: 700 1.15rem var(--display); text-transform: uppercase; }
+.fact p { margin: 0; font-size: .8rem; color: var(--muted); }
+.proj { display: grid; gap: 4px; font-size: .88rem; }
+.proj-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-bottom: 1px dashed var(--line); padding-bottom: 4px; }
+.proj-row b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.proj-row:last-child { border-bottom: 0; }
 @media (max-width: 760px) {
+  .explain, .gbets, .facts { grid-template-columns: 1fr; }
   .spot { grid-template-columns: 1fr; }
   .split, .calc { grid-template-columns: 1fr; }
   .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -177,7 +209,7 @@ details p { margin: 8px 0 0; max-width: 72ch; }
     <nav role="tablist">
       <button role="tab" aria-selected="true" data-view="picks" id="tab-picks">Top picks</button>
       <button role="tab" aria-selected="false" data-view="all" id="tab-all">All props</button>
-      <button role="tab" aria-selected="false" data-view="slate" id="tab-slate">Slate &amp; odds</button>
+      <button role="tab" aria-selected="false" data-view="slate" id="tab-slate">Games &amp; bets</button>
       <button role="tab" aria-selected="false" data-view="calc" id="tab-calc">Calculator</button>
     </nav>
   </div>
@@ -228,14 +260,20 @@ details p { margin: 8px 0 0; max-width: 72ch; }
       <p class="empty" id="all-count"></p>
     </section>
 
-    <section id="view-slate" hidden style="display:grid;gap:12px">
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th>Game</th><th>Kickoff</th><th class="r">Spread</th><th class="r">Total</th><th class="r">Moneyline</th><th class="r">Away implied</th><th class="r">Home implied</th><th class="r">Value picks</th></tr></thead>
-          <tbody id="slate"></tbody>
-        </table>
+    <section id="view-slate" hidden style="display:grid;gap:22px">
+      <div class="explain">
+        <div><b>Moneyline</b><p>Pick who wins. <span class="mono">−160</span> means bet $160 to win $100. <span class="mono">+145</span> means bet $100 to win $145.</p></div>
+        <div><b>Spread</b><p>The favorite has to win by more than the spread. The underdog covers if it loses by less, or wins.</p></div>
+        <div><b>Over/under</b><p>Bet on the two teams' combined points: over or under the total.</p></div>
       </div>
-      <p class="empty" style="font-size:.85rem">Spread and total are the median across books; moneyline is the best price for each side. Implied team total = (total ÷ 2) ± (spread ÷ 2). Green totals are 24+ points, the offenses most likely to pile up yards.</p>
+      <div class="sec-head"><h2>Best game bets</h2><span class="legend">Our model vs. the market, all games</span></div>
+      <div class="gbets" id="gbets"></div>
+      <div class="sec-head"><h2>Every game</h2></div>
+      <div class="games" id="slate"></div>
+      <details>
+        <summary>How game picks are made</summary>
+        <p>We project each team's score from its 2026 points scored and allowed, averaged with the opponent's, pulled toward the league average early in the season. Home teams get 1.5 points; neutral-site games (London, Paris and so on) get none. We turn the projected margin and total into chances (NFL margins and totals swing about 13–14 points either way), then move the market's fair chance 25% toward ours, like the player props. Edge is our chance minus what the best available price implies. Lines and prices are the best across the sportsbooks we track. Best game bets show one bet per game and skip odds longer than +250 or shorter than −250.</p>
+      </details>
     </section>
 
     <section id="view-calc" hidden>
@@ -356,6 +394,7 @@ function renderHeader() {
   const ageH = (Date.now() - new Date(DATA.generated).getTime()) / 36e5;
   const s1 = el("span"); const dot = el("span", "live" + (ageH > 36 ? " stale" : "")); dot.setAttribute("aria-hidden", "true");
   s1.append(dot, "Odds updated ", el("b", null, DATA.generatedEt));
+  if (DATA.propsEt && DATA.propsEt !== DATA.generatedEt) s1.append(" · player props ", el("b", null, DATA.propsEt));
   fr.append(s1, el("span", null, `${games.length} games · ${Math.max(...games.map(g => g.books || 0))} sportsbooks`));
   if (ageH > 36) fr.append(el("span", null, "Lines have likely moved since this update. Check your book."));
   const picks = topPicks("", "", 15);
@@ -549,19 +588,135 @@ document.querySelectorAll("th.sortable").forEach(th => th.addEventListener("clic
 }));
 [aQ, aGame, aMarket, aValue].forEach(x => x.addEventListener("input", renderAll));
 
-// ---------- slate ----------
+// ---------- slate & game bets ----------
+const teamName = (g, abbr) => {
+  const full = abbr === g.home ? g.homeName : g.awayName;
+  return full ? full.split(" ").slice(-1)[0] : abbr;   // "Pittsburgh Steelers" -> "Steelers"
+};
+const NEUTRAL = /london|paris|germany|munich|berlin|mexico|brazil|madrid|dublin|australia|melbourne/i;
+const HFA = 1.5, MARGIN_SD = 13.5, TOTAL_SD = 13;
+const teamForm = DATA?.teams || {};
+const leagueAvg = (() => { const all = Object.values(teamForm).flat().map(r => r.pf); return all.length ? all.reduce((a, b) => a + b, 0) / all.length : 22; })();
+function form(abbr) {
+  const rows = teamForm[abbr] || [], n = rows.length;
+  if (!n) return null;
+  const pf = rows.reduce((a, r) => a + r.pf, 0) / n, pa = rows.reduce((a, r) => a + r.pa, 0) / n;
+  const w = rows.filter(r => r.pf > r.pa).length, l = rows.filter(r => r.pf < r.pa).length, t = n - w - l;
+  return { n, pf, pa, rec: `${w}-${l}${t ? "-" + t : ""}`, rpf: (n * pf + 4 * leagueAvg) / (n + 4), rpa: (n * pa + 4 * leagueAvg) / (n + 4), last: rows.slice(-3) };
+}
+function gameModel(g) {
+  const H = form(g.home), A = form(g.away);
+  if (!H || !A) return null;
+  const hfa = NEUTRAL.test(g.note || "") ? 0 : HFA;
+  const home = (H.rpf + A.rpa) / 2 + hfa / 2, away = (A.rpf + H.rpa) / 2 - hfa / 2;
+  return { home, away, margin: home - away, total: home + away, H, A, neutral: !hfa };
+}
+function blend(fair, model) { return Math.min(Math.max(fair + LOG_WEIGHT * (model - fair), 0.02), 0.98); }
+// Each game's three bets, best side of each, with edge vs the best price.
+function gameBets(g) {
+  const L = g.lines || {}, m = gameModel(g), out = [];
+  if (!m) return out;
+  const side = (type, label, short, odds, book, fair, model) => {
+    const est = blend(fair, model), imp = implied(odds);
+    return { g, type, label, short, odds, book, fair, model, est, imp, edge: est - imp, ev: 100 * (est * payout(odds) - (1 - est)) };
+  };
+  const hn = teamName(g, g.home), an = teamName(g, g.away);
+  if (L.ml) {
+    const pH = phi(m.margin / MARGIN_SD);
+    const a = side("Moneyline", `${hn} to win`, `${g.home} ML`, L.ml.home.odds, L.ml.home.book, L.ml.fairHome, pH);
+    const b = side("Moneyline", `${an} to win`, `${g.away} ML`, L.ml.away.odds, L.ml.away.book, 1 - L.ml.fairHome, 1 - pH);
+    out.push(a.edge >= b.edge ? a : b);
+  }
+  if (L.spread) {
+    const hl = L.spread.homeLine, pH = phi((m.margin + hl) / MARGIN_SD);
+    const fmt = (n, v) => `${n} ${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v) || "PK"}`;
+    const a = side("Spread", fmt(hn, hl), fmt(g.home, hl), L.spread.home.odds, L.spread.home.book, L.spread.fairHome, pH);
+    const b = side("Spread", fmt(an, -hl), fmt(g.away, -hl), L.spread.away.odds, L.spread.away.book, 1 - L.spread.fairHome, 1 - pH);
+    out.push(a.edge >= b.edge ? a : b);
+  }
+  if (L.total) {
+    const pO = 1 - phi((L.total.line - m.total) / TOTAL_SD);
+    const a = side("Over/under", `Over ${L.total.line}`, `O ${L.total.line}`, L.total.over.odds, L.total.over.book, L.total.fairOver, pO);
+    const b = side("Over/under", `Under ${L.total.line}`, `U ${L.total.line}`, L.total.under.odds, L.total.under.book, 1 - L.total.fairOver, 1 - pO);
+    out.push(a.edge >= b.edge ? a : b);
+  }
+  return out;
+}
+function betChip(b, withGame) {
+  const [tc, tl] = b.edge >= 0.02 ? tier(b.edge) : ["lean", "No edge"];
+  const d = el("div", "gbet " + (b.edge >= 0.02 ? "t-" + tc : "t-none"));
+  const top = el("div", "gbet-top"); top.append(el("span", "eyebrow", b.type), el("span", "tag " + (b.edge >= 0.02 ? tc : "lean"), tl));
+  d.append(top, el("div", "gbet-pick", b.label));
+  if (withGame) d.append(el("div", "mt", `${b.g.away} @ ${b.g.home} · ${b.g.kick}`));
+  const kv = el("div", "kv");
+  const k = (l, v, cls) => { const x = el("div"); x.append(el("span", null, l), el("b", cls || "", v)); return x; };
+  kv.append(k("Odds", fmtOdds(b.odds)), k("Our chance", pct(b.est)), k("Edge", pts(b.edge), b.edge > 0 ? "pos" : "neg"));
+  d.append(kv, el("div", "mt", b.edge >= 0.02 ? `Best price at ${b.book}` : "Price is about right. Pass, or bet small."));
+  return d;
+}
+function winBar(g) {
+  const L = g.lines || {}; if (!L.ml) return el("div");
+  const ph = L.ml.fairHome, wrap = el("div", "winbar");
+  const lab = el("div", "winbar-lab");
+  lab.append(el("span", null, `${teamName(g, g.away)} ${Math.round((1 - ph) * 100)}%`), el("span", "empty", "Chance to win (market)"), el("span", null, `${Math.round(ph * 100)}% ${teamName(g, g.home)}`));
+  const track = el("div", "winbar-track"), a = el("div", "wa"), h = el("div", "wh");
+  a.style.width = pct(1 - ph); h.style.width = pct(ph); track.append(a, h); wrap.append(lab, track); return wrap;
+}
 function renderSlate() {
-  const tb = document.getElementById("slate"); tb.replaceChildren();
+  const host = document.getElementById("slate"), gb = document.getElementById("gbets");
+  host.replaceChildren(); gb.replaceChildren();
+  if (!DATA) { host.append(el("p", "empty", "Games appear after the first odds refresh.")); return; }
   const valueByGame = {};
   for (const r of topPicks("", "", 999)) if (r.c.edge >= 0.03) valueByGame[r.p.game] = (valueByGame[r.p.game] || 0) + 1;
+  // one bet per game, and no long shots, like the prop picks
+  const seen = new Set(), allBets = [];
+  for (const b of games.flatMap(gameBets).filter(b => b.edge >= 0.02 && b.odds >= -250 && b.odds <= 250).sort((a, b) => b.edge - a.edge)) {
+    if (seen.has(b.g.id)) continue; seen.add(b.g.id); allBets.push(b); if (allBets.length >= 6) break;
+  }
+  if (allBets.length) allBets.forEach(b => gb.append(betChip(b, true)));
+  else gb.append(el("p", "empty", "No game bets clear 2 points of edge right now. The market and our model mostly agree."));
+
   for (const g of games) {
-    const tr = el("tr");
-    const imp = v => el("td", "num" + (v >= 24 ? " hot" : ""), v ?? "—");
-    const vp = valueByGame[g.id] || 0, vcell = el("td", "num"); vcell.append(vp ? el("span", "tag value", String(vp)) : "—");
-    tr.append(el("td", null, `${g.away} @ ${g.home}`), el("td", null, g.kick), el("td", "num", g.fav ? `${g.fav} −${g.spread}` : "—"),
-      el("td", "num", g.total ?? "—"), el("td", "num", g.mlAway != null ? `${fmtOdds(g.mlAway)} / ${fmtOdds(g.mlHome)}` : "—"),
-      imp(g.awayImp), imp(g.homeImp), vcell);
-    tb.append(tr);
+    const m = gameModel(g), L = g.lines || {}, hn = teamName(g, g.home), an = teamName(g, g.away);
+    const card = el("article", "game");
+    const head = el("div", "game-head");
+    const t = el("div"); t.append(el("h3", null, `${an} @ ${hn}`), el("div", "mt", [g.kick, g.venue, g.note].filter(Boolean).join(" · ")));
+    head.append(t); card.append(head, winBar(g));
+
+    const facts = el("div", "facts");
+    const fact = (label, big, small) => { const f = el("div", "fact"); f.append(el("span", "eyebrow", label), el("b", null, big), el("p", null, small)); return f; };
+    if (g.fav) {
+      const favN = teamName(g, g.fav), dog = g.fav === g.home ? an : hn;
+      const s = g.spread, whole = Number.isInteger(s);
+      facts.append(fact("Spread", `${favN} −${s}`, `${favN} must win by ${whole ? s + 1 : Math.ceil(s)}+ to cover. ${dog} cover by losing by ${whole ? s - 1 : Math.floor(s)} or less, or winning.${whole ? ` Exactly ${s} is a push (refund).` : ""}`));
+    }
+    if (g.total) {
+      const t2 = g.total, whole = Number.isInteger(t2);
+      facts.append(fact("Over/under", `${t2} points`, `Over hits at ${whole ? t2 + 1 : Math.ceil(t2)}+ combined points; under at ${whole ? t2 - 1 : Math.floor(t2)} or fewer.`));
+    }
+    if (L.ml) facts.append(fact("Moneyline", `${g.away} ${fmtOdds(L.ml.away.odds)} · ${g.home} ${fmtOdds(L.ml.home.odds)}`,
+      `$100 on the ${L.ml.away.odds > 0 ? an : hn} wins $${Math.max(L.ml.away.odds, L.ml.home.odds)}. To win $100 on the ${L.ml.away.odds > 0 ? hn : an}, bet $${-Math.min(L.ml.away.odds, L.ml.home.odds)}.`));
+    card.append(facts);
+
+    const proj = el("div", "proj");
+    const score = (label, a, h) => { const r = el("div", "proj-row"); r.append(el("span", "empty", label), el("b", null, `${g.away} ${a} – ${h} ${g.home}`)); return r; };
+    if (g.homeImp) proj.append(score("Market's projected score", Math.round(g.awayImp), Math.round(g.homeImp)));
+    if (m) proj.append(score("Our projected score", Math.round(m.away), Math.round(m.home)));
+    if (m) {
+      const fl = (abbr, f) => { const r = el("div", "proj-row"); r.append(el("span", "empty", `${abbr} ${f.rec}`), el("span", null, `scores ${f.pf.toFixed(1)} · allows ${f.pa.toFixed(1)} per game`)); return r; };
+      proj.append(fl(g.away, m.A), fl(g.home, m.H));
+    }
+    card.append(proj);
+
+    const bets = gameBets(g);
+    if (bets.length) { const row = el("div", "gbets in-game"); bets.forEach(b => row.append(betChip(b, false))); card.append(el("div", "eyebrow", "Our game picks"), row); }
+
+    const vp = valueByGame[g.id] || 0;
+    const foot = el("div", "foot");
+    foot.append(el("span", null, vp ? `${vp} value player prop${vp > 1 ? "s" : ""} in this game` : "No value player props in this game"));
+    if (vp) { const b = el("button", "btn", "See player props"); b.type = "button"; b.addEventListener("click", () => { fGame.value = g.id; renderPicks(); show("picks"); }); foot.append(b); }
+    card.append(foot);
+    host.append(card);
   }
 }
 
